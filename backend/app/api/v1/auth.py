@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from app.api.dependencies import get_db
 from app.schemas.user import UserCreate, UserResponse, Token
-from app.services import user_service
+from app.services.user import UserService 
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -13,18 +13,19 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
-    user = user_service.get_user_by_email(db, email=user_in.email)
+    service = UserService(db)
+    user = service.get_user_by_email(email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="Пользователь с таким email уже существует"
         )
-    return user_service.create_user(db, user_in=user_in)
+    return service.create_user(user_in=user_in)
 
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = user_service.authenticate_user(db, email=form_data.username, password=form_data.password)
+    user = UserService(db).authenticate_user(email=form_data.username, password=form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

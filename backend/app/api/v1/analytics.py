@@ -2,11 +2,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
-from sqlalchemy import extract
 from app.api.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.models.transaction import Transaction
-from app.models.category import Category
+from app.services.analytics import AnalyticsService
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -16,10 +14,8 @@ def get_family_members(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    members = db.query(User.id, User.full_name).filter(
-        User.family_id == current_user.family_id
-    ).all()
-    return [{"id": m.id, "full_name": m.full_name} for m in members]
+    service = AnalyticsService(db=db)
+    return service.get_family_members(current_user)
 
 
 @router.get("/filter")
@@ -30,27 +26,13 @@ def get_filtered_transactions(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    query = db.query(
-        Transaction.id,
-        Transaction.amount,
-        Category.type.label("type"),
-        Transaction.date,
-        Transaction.comment,
-        User.full_name.label("author_name"),
-        Category.name.label("category_name")
-    ).join(User, Transaction.user_id == User.id) \
-        .join(Category, Transaction.category_id == Category.id) \
-        .filter(Transaction.family_id == current_user.family_id)
-
-    if start_date:
-        query = query.filter(Transaction.date >= start_date)
-    if end_date:
-        query = query.filter(Transaction.date <= end_date)
-    if author_id:
-        query = query.filter(Transaction.user_id == author_id)
-
-    results = query.order_by(Transaction.date.desc()).all()
-
+    service = AnalyticsService(db=db)
+    results = service.get_filtered_transactions(
+        start_date=start_date,
+        end_date=end_date,
+        author_id=author_id,
+        current_user=current_user
+    )
     return [
         {
             "id": row.id,
@@ -72,40 +54,32 @@ def get_monthly_analytics(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    query = db.query(
-        Transaction.id,
-        Transaction.amount,
-        Category.type.label("type"),
-        Transaction.date,
-        Transaction.comment,
-        User.full_name.label("author_name"),
-        Category.name.label("category_name")
-    ).join(User, Transaction.user_id == User.id) \
-        .join(Category, Transaction.category_id == Category.id) \
-        .filter(
-        Transaction.family_id == current_user.family_id,
-        extract('year', Transaction.date) == year,
-        extract('month', Transaction.date) == month
+    service = AnalyticsService(db)
+    family_id = current_user.family_id
+
+    analytics = service.get_monthly_analytics(family_id=family_id, year=year, month=month)
+
+    transactions_rows = service.get_transaction_details(
+        family_id=family_id,
+        year=year,
+        month=month
     )
 
-    results = query.order_by(Transaction.date.desc()).all()
-
-    total_income = sum(row.amount for row in results if row.type == 'income')
-    total_expense = sum(row.amount for row in results if row.type == 'expense')
-
     return {
-        "total_income": total_income,
-        "total_expense": total_expense,
+        "total_income": analytics.total_income,
+        "total_expense": analytics.total_expense,
+        "income_by_category": analytics.income_by_category,     
+        "expense_by_category": analytics.expense_by_category,   
         "transactions": [
             {
                 "id": row.id,
                 "amount": row.amount,
                 "type": row.type,
                 "date": row.date,
-                "description": row.comment,
+                "description": row.description,
                 "author_name": row.author_name,
                 "category_name": row.category_name
             }
-            for row in results
+            for row in transactions_rows
         ]
     }

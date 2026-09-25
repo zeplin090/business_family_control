@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.transaction import TransactionCreate, TransactionResponse, TransactionUpdate
-from app.services import transaction_service
+from app.services.transaction import TransactionService
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -18,8 +18,7 @@ def create_transaction(
     if not current_user.family_id:
         raise HTTPException(status_code=400, detail="Пользователь не состоит в семье")
 
-    return transaction_service.create_transaction(
-        db=db,
+    return TransactionService(db).create_transaction(
         obj_in=transaction_in,
         user_id=current_user.id,
         family_id=current_user.family_id
@@ -35,7 +34,7 @@ def read_transactions(
 ):
     if not current_user.family_id:
         return []
-    return transaction_service.get_transactions(db, family_id=current_user.family_id, skip=skip, limit=limit)
+    return TransactionService(db).get_transactions(family_id=current_user.family_id, skip=skip, limit=limit)
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)
@@ -44,7 +43,7 @@ def read_transaction(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    transaction = transaction_service.get_transaction_by_id(db, transaction_id, current_user.family_id)
+    transaction = TransactionService(db).get_transaction_by_id(transaction_id, current_user.family_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Транзакция не найдена")
     return transaction
@@ -57,11 +56,11 @@ def update_transaction(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    transaction = transaction_service.get_transaction_by_id(db, transaction_id, current_user.family_id)
+    transaction = transaction.get_transaction_by_id(db, transaction_id, current_user.family_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Транзакция не найдена")
 
-    return transaction_service.update_transaction(db, db_obj=transaction, obj_in=transaction_in)
+    return TransactionService(db).update_transaction(db_obj=transaction, obj_in=transaction_in)
 
 
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -70,15 +69,16 @@ def delete_transaction(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    transaction = transaction_service.get_transaction_by_id(db, transaction_id, current_user.family_id)
+    service = TransactionService(db)
+    transaction = service.get_transaction_by_id(transaction_id, current_user.family_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Транзакция не найдена")
 
-    transaction_service.delete_transaction(db, transaction)
+    service.delete_transaction(transaction)
     return None
 
 
-from app.services import transaction_service, budget_service
+from app.services import budget_service
 from app.schemas.transaction import TransactionCreateResult
 
 
@@ -99,7 +99,7 @@ def create_transaction(
         transaction_date=transaction_in.date
     )
 
-    transaction = transaction_service.create_transaction(
+    transaction = transaction.create_transaction(
         db=db,
         obj_in=transaction_in,
         user_id=current_user.id,

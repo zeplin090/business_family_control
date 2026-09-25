@@ -8,7 +8,7 @@ from app.db.session import SessionLocal
 from app.models.user import User
 from app.core.security import SECRET_KEY, ALGORITHM
 from app.schemas.user import TokenPayload
-from app.services.user_service import get_user_by_email
+from app.services.user import UserService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -39,7 +39,7 @@ def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = get_user_by_email(db, email=token_data.sub)
+    user = UserService(db).get_user_by_email(email=token_data.sub)
     if user is None:
         raise credentials_exception
     return user
