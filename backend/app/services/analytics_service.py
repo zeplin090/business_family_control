@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.transaction import Transaction
 from app.models.category import Category, TransactionType
-from app.schemas.analytics_schema import MonthlyAnalyticsResponse, CategoryData
+from app.schemas.analytics import MonthlyAnalyticsResponse, CategoryData
 
 
 def get_monthly_analytics(db: Session, family_id: int, year: int, month: int) -> MonthlyAnalyticsResponse:

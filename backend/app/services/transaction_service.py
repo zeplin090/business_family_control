@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.transaction import Transaction
-from app.schemas.transaction_schema import TransactionCreate, TransactionUpdate
+from app.schemas.transaction import TransactionCreate, TransactionUpdate
 
 
 def create_transaction(db: Session, obj_in: TransactionCreate, user_id: int, family_id: int) -> Transaction:

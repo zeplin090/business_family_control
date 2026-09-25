@@ -49,7 +49,7 @@ def check_category_limit(
 
 
 from sqlalchemy.orm import Session
-from app.schemas.budget_schema import BudgetProgressResponse, CategoryBudgetProgress
+from app.schemas.budget import BudgetProgressResponse, CategoryBudgetProgress
 
 
 def get_budget_progress(db: Session, family_id: int, year: int, month: int) -> BudgetProgressResponse:

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, get_current_user
 from app.models.user import User, RoleEnum
-from app.schemas.category_schema import CategoryCreate, CategoryUpdate, CategoryResponse
+from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.services import category_service
 
 router = APIRouter(prefix="/categories", tags=["Categories & Budgeting"])

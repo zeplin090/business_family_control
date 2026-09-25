@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.models.category import Category
-from app.schemas.category_schema import CategoryCreate, CategoryUpdate
+from app.schemas.category import CategoryCreate, CategoryUpdate
 
 
 def get_categories(db: Session, family_id: int) -> list[Category]:

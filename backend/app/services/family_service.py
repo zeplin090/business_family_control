@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.models.family import Family
 from app.models.user import User, RoleEnum
-from app.schemas.family_schema import FamilyCreate
+from app.schemas.family import FamilyCreate
 
 
 def generate_invite_code() -> str:

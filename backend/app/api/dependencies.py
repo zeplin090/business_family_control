@@ -7,7 +7,7 @@ from jose import jwt, JWTError
 from app.db.session import SessionLocal
 from app.models.user import User
 from app.core.security import SECRET_KEY, ALGORITHM
-from app.schemas.user_schema import TokenPayload
+from app.schemas.user import TokenPayload
 from app.services.user_service import get_user_by_email
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
