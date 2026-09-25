@@ -56,7 +56,8 @@ def update_transaction(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
-    transaction = transaction.get_transaction_by_id(db, transaction_id, current_user.family_id)
+
+    transaction = TransactionService(db).get_transaction_by_id(transaction_id, current_user.family_id)
     if not transaction:
         raise HTTPException(status_code=404, detail="Транзакция не найдена")
 
@@ -78,7 +79,7 @@ def delete_transaction(
     return None
 
 
-from app.services import budget_service
+from app.services.budget import BudgetService
 from app.schemas.transaction import TransactionCreateResult
 
 
@@ -88,18 +89,19 @@ def create_transaction(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
+    service_budget = BudgetService(db)
     if not current_user.family_id:
         raise HTTPException(status_code=400, detail="Пользователь не состоит в семье")
 
-    warning_message = budget_service.check_category_limit(
-        db=db,
+    warning_message = service_budget.check_category_limit(
         category_id=transaction_in.category_id,
         family_id=current_user.family_id,
         new_amount=transaction_in.amount,
         transaction_date=transaction_in.date
     )
 
-    transaction = transaction.create_transaction(
+    service_transaction = TransactionService(db)
+    transaction = service_transaction.create_transaction(
         db=db,
         obj_in=transaction_in,
         user_id=current_user.id,

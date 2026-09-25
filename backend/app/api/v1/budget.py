@@ -5,7 +5,7 @@ from datetime import date
 from app.api.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.budget import BudgetProgressResponse
-from app.services import budget_service
+from app.services.budget import BudgetService
 
 router = APIRouter(prefix="/budget", tags=["Categories & Budgeting"])
 
@@ -20,4 +20,4 @@ def get_budget_progress(
     if not current_user.family_id:
         raise HTTPException(status_code=400, detail="Вы не состоите в семье")
 
-    return budget_service.get_budget_progress(db, current_user.family_id, year, month)
+    return BudgetService(db).get_budget_progress(current_user.family_id, year, month)
