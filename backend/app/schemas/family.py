@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List
-from app.schemas.user_schema import UserResponse
+from app.schemas.user import UserResponse
 
 
 class FamilyBase(BaseModel):
