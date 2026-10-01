@@ -1,16 +1,15 @@
 import calendar
 from datetime import date
 from decimal import Decimal
-from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
-from app.models.category import Category, TransactionType
-from app.models.transaction import Transaction
+from app.models.category import TransactionType
 from app.schemas.budget import BudgetProgressResponse, CategoryBudgetProgress
+from app.repositories.budget import BudgetRepository
 
 class BudgetService:
     def __init__(self, db: Session):
-        self.db = db
+        self.repository = BudgetRepository(db)
 
     def check_category_limit(self,
             category_id: int,
@@ -18,9 +17,8 @@ class BudgetService:
             new_amount: Decimal,
             transaction_date: date
         ) -> str | None:
-        stmt_cat = select(Category).where(Category.id == category_id, Category.family_id == family_id)
-        category = self.db.execute(stmt_cat).scalar_one_or_none()
 
+        category = self.repository.get_category(category_id=category_id, family_id=family_id)
         if not category or category.type != TransactionType.EXPENSE or not category.monthly_limit:
             return None
 
@@ -30,14 +28,12 @@ class BudgetService:
         last_day = calendar.monthrange(year, month)[1]
         end_date = date(year, month, last_day)
 
-        stmt_sum = select(func.sum(Transaction.amount)).where(
-            Transaction.category_id == category_id,
-            Transaction.family_id == family_id,
-            Transaction.date >= start_date,
-            Transaction.date <= end_date
-        )
-        current_spent = self.db.execute(stmt_sum).scalar() or Decimal("0.0")
-
+        current_spent = self.repository.get_spent_value(
+            category_id=category_id, 
+            family_id=family_id, 
+            start_date=start_date, 
+            end_date=end_date)
+        
         total_projected = current_spent + new_amount
 
         if total_projected > category.monthly_limit:
@@ -55,29 +51,12 @@ class BudgetService:
         start_date = date(year, month, 1)
         last_day = calendar.monthrange(year, month)[1]
         end_date = date(year, month, last_day)
-        stmt = (
-            select(
-                Category.id,
-                Category.name,
-                Category.monthly_limit,
-                func.sum(Transaction.amount).label("total_spent")
-            )
-            .outerjoin(
-                Transaction,
-                (Transaction.category_id == Category.id) &
-                (Transaction.date >= start_date) &
-                (Transaction.date <= end_date) &
-                (Transaction.family_id == family_id)
-            )
-            .where(
-                Category.family_id == family_id,
-                Category.type == TransactionType.EXPENSE,
-                Category.monthly_limit.is_not(None)
-            )
-            .group_by(Category.id)
-        )
 
-        results = self.db.execute(stmt).all()
+        results = self.repository.get_budget_utilization_data(
+            family_id=family_id, 
+            start_date=start_date, 
+            end_date=end_date)
+        
         progress_list = []
 
         for row in results:
